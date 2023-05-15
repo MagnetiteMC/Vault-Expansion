@@ -49,6 +49,10 @@ public class VaultExpansion extends PlaceholderExpansion implements Cacheable, C
                 .put("formatting.billions", "B")
                 .put("formatting.trillions", "T")
                 .put("formatting.quadrillions", "Q")
+                .put("formatting.quintillions", "q")
+                .put("formatting.sextillions", "s")
+                .put("formatting.septillions", "S")
+                .put("formatting.octillions", "O")
                 .build();
     }
 

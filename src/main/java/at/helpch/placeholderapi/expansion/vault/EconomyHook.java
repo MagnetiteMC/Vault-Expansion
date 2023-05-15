@@ -6,6 +6,7 @@ import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,16 +22,13 @@ public class EconomyHook extends VaultHook {
     private static final DecimalFormat FIXED_FORMAT = new DecimalFormat("#");
     private static final Map<Integer, DecimalFormat> DECIMAL_FORMATS_CACHE = new HashMap<>();
 
-    private final NavigableMap<Long, String> suffixes = new TreeMap<>();
+    private final NavigableMap<BigInteger, String> suffixes = new TreeMap<>();
+    private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.#");
+    private static final String[] SUFFIXES = new String[]{"", "K", "M", "B", "T", "q", "Q", "s", "S", "O"};
     private Economy economy;
 
     public EconomyHook(VaultExpansion expansion) {
         super(expansion);
-        suffixes.put(1_000L, expansion.getString("formatting.thousands", "K"));
-        suffixes.put(1_000_000L, expansion.getString("formatting.millions", "M"));
-        suffixes.put(1_000_000_000L, expansion.getString("formatting.billions", "B"));
-        suffixes.put(1_000_000_000_000L, expansion.getString("formatting.trillions", "T"));
-        suffixes.put(1_000_000_000_000_000L, expansion.getString("formatting.quadrillions", "Q"));
         setup();
     }
 
@@ -59,26 +57,19 @@ public class EconomyHook extends VaultHook {
      * @return balance formatted
      * @author <a href="https://stackoverflow.com/users/829571/assylias">assylias</a> (<a href="https://stackoverflow.com/a/30661479/11496439">source</a>)
      */
-    private @NotNull String formatBalance(long balance) {
-        //Long.MIN_VALUE == -Long.MIN_VALUE, so we need an adjustment here
-        if (balance == Long.MIN_VALUE) {
-            return formatBalance(Long.MIN_VALUE + 1);
+    private @NotNull String formatBalance(double balance) {
+        // Find the index of the suffix based on the number of digits
+        int index = (int) Math.log10(balance) / 3;
+        // Check if the index is valid
+        if (index < 0 || index >= SUFFIXES.length) {
+            // Return the original number as a string
+            return String.valueOf(balance);
         }
-        if (balance < 0) {
-            return "-" + formatBalance(-balance);
-        }
+        // Divide the number by the appropriate power of 1000
+        double value = balance / Math.pow(1000, index);
+        // Format the value and append the suffix
+        return DECIMAL_FORMAT.format(value) + SUFFIXES[index];
 
-        if (balance < 1000) {
-            return Long.toString(balance); //deal with easy case
-        }
-
-        final Map.Entry<Long, String> e = suffixes.floorEntry(balance);
-        final Long divideBy = e.getKey();
-        final String suffix = e.getValue();
-
-        long truncated = balance / (divideBy / 10); //the number part of the output times 10
-        boolean hasDecimal = truncated < 100 && (truncated / 10d) != (truncated / 10);
-        return hasDecimal ? (truncated / 10d) + suffix : (truncated / 10) + suffix;
     }
 
     @Override
@@ -120,7 +111,7 @@ public class EconomyHook extends VaultHook {
             case "balance_fixed":
                 return FIXED_FORMAT.format(balance);
             case "balance_formatted":
-                return formatBalance((long) balance);
+                return formatBalance(balance);
             case "balance_commas":
                 return COMMAS_FORMAT.format(balance);
             default:
